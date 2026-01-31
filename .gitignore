@@ -1,0 +1,27 @@
+# --- Python & Runtime ---
+__pycache__/
+*.py[cod]
+*$py.class
+.DS_Store
+
+# --- Training Logs ---
+*.log
+log_*.txt
+runs/
+
+# --- Heavy Model Checkpoints ---
+# We ignore these to prevent the repo from becoming huge (GBs of data)
+saved_models/
+*.bin
+*.pt
+*.pth
+checkpoint-*/
+
+# --- Datasets ---
+dataset/
+*.zip
+*.tar.gz
+
+# --- IDE Settings ---
+.vscode/
+.idea/

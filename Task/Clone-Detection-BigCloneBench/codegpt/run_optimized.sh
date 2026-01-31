@@ -36,7 +36,12 @@ mkdir -p ./saved_models/
 #  | (--epoch)        |                        |                            | the larger batch size        |
 #  ---------------------------------------------------------------------------------------------------------
 
-# Launching with 'accelerate' to handle Distributed Data Parallel (DDP) automatically on 2 GPUs
+# OPTIMIZATION NOTES:
+# 1. Launcher: Uses 'accelerate launch' for Distributed Data Parallel (DDP) on 2 GPUs.
+# 2. Context Window (--block_size): Set to 1024 (Model Max) to capture full function bodies for clone detection; your 48GB VRAM can easily handle this.
+# 3. Batch Size (--train_batch_size): Set to 32 per GPU (64 global) to maximize Tensor Core usage on RTX 6000 Ada.
+# 4. Epochs (--epoch): Increased to 5 to ensure convergence since the larger batch size results in fewer weight updates per epoch.
+
 accelerate launch --multi_gpu --num_processes 2 run.py \
     --output_dir=./saved_models/ \
     --model_type=gpt2 \
@@ -48,17 +53,10 @@ accelerate launch --multi_gpu --num_processes 2 run.py \
     --train_data_file=../dataset/train.txt \
     --eval_data_file=../dataset/valid.txt \
     --test_data_file=../dataset/test.txt \
-    \
-    # OPTIMIZATION: Context Window changed to 1024 (Model Max) to capture full function bodies for clone detection; your 48GB VRAM can easily handle this.
     --block_size 1024 \
-    \
-    # OPTIMIZATION: Batch size set to 32 per GPU (64 global) to maximize Tensor Core usage on RTX 6000 Ada.
     --train_batch_size 32 \
     --eval_batch_size 64 \
-    \
-    # OPTIMIZATION: Increased to 5 epochs to ensure convergence since the larger batch size results in fewer weight updates per epoch.
     --epoch 5 \
-    \
     --learning_rate 2e-5 \
     --max_grad_norm 1.0 \
     --evaluate_during_training \
