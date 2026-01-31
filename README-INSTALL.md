@@ -77,8 +77,10 @@ for i in range(torch.cuda.device_count()):
 
 ## 4. Scientific and Outreach Context
 
-This setup is a core part of our ongoing research into **AI-Driven Software Intelligence and Collaboration**. A primary goal of this repository is the **mentorship of undergraduate and graduate researchers** through the full lifecycle of high-impact projects.
+This setup marks the launch of a **new research project** within our lab focused on the empirical robustness of Large Language Models. A primary goal of this initiative is the **active mentorship of undergraduate and graduate researchers** through the technical and experimental phases of AI systems research.
 
-* **Research Focus:** We leverage Large Language Models (LLMs) and datasets like BigCloneBench to automate complex software engineering tasks such as code summarization and clone detection.
-* **Mentorship:** Students contribute to this project by managing the AI infrastructure, configuring CUDA-accelerated environments, and conducting large-scale benchmarking. This includes gaining hands-on experience in resolving complex system-level dependencies, such as the Intel MKL binary conflicts documented above.
-* **Preparation:** By guiding students from initial environment design to the deployment of models like **SYNCode**, we are preparing the next generation of engineers for a future where AI and human expertise work in tandem.
+* **Research Focus:** We are establishing a new benchmarking framework using **BigCloneBench** to evaluate the semantic understanding capabilities of state-of-the-art PTMs (such as GraphCodeBERT and CodeT5).
+* **Mentorship:** Students serve as core contributors to this new project, managing the high-performance AI infrastructure and troubleshooting complex system dependencies—such as the Intel MKL binary conflicts documented above.
+* **Preparation:** By guiding students from the initial environment design to the execution of large-scale experiments, we are preparing the next generation of engineers to handle the computational and architectural challenges of modern software intelligence.
+
+This infrastructure lays the groundwork for our team's upcoming contributions to the field of automated code analysis and clone detection.
