@@ -1,3 +1,5 @@
+--
+
 # Installation Guide: Clone Detection Research Environment
 
 This repository contains the environment setup and benchmarking tools for evaluating Pre-trained Models (PTMs) on the **BigCloneBench** dataset. This setup is optimized for high-performance deep learning on dual NVIDIA RTX 6000 Ada GPUs.
@@ -24,16 +26,29 @@ conda activate bigclone
 
 ### Step 2: Install PyTorch with CUDA 12.4 Support
 
-Install the core deep learning framework directly via the `pytorch` and `nvidia` channels to ensure the internal `nvcc` tools match your hardware.
+Install the core deep learning framework directly via the `pytorch` and `nvidia` channels. This ensures that the internal `nvcc` tools and shared libraries are perfectly matched to your hardware.
 
 ```bash
-conda install pytorch torchvision torchaudio pytorch-cuda=12.4 -c pytorch -c nvidia
+conda install pytorch torchvision torchaudio pytorch-cuda=12.4 -c pytorch -c nvidia -y
 
 ```
 
-### Step 3: Install Research Dependencies
+### Step 3: Resolve Intel MKL Library Conflicts (Critical)
+
+**Note:** A known conflict exists between the latest Intel Math Kernel Library (MKL) 2025.x provided by the default Conda channel and the PyTorch binaries, which often expect MKL 2024.x. This mismatch causes an `undefined symbol: iJIT_NotifyEvent` error when importing torch.
+
+To prevent this, explicitly downgrade the MKL library to the compatible 2024 version:
+
+```bash
+conda install "mkl<2025" -y
+
+```
+
+### Step 4: Install Research Dependencies
 
 Use the provided `requirements.txt` to install the Transformers library, database connectors for BigCloneBench, and structural parsing tools.
+
+**Important:** Ensure your `requirements.txt` **does not** contain `torch`, `torchvision`, or `torchaudio`, as installing these via pip will overwrite the optimized Conda binaries and re-introduce library conflicts.
 
 ```bash
 pip install -r requirements.txt
@@ -42,7 +57,7 @@ pip install -r requirements.txt
 
 ## 3. Verifying the Setup
 
-Run the following Python snippet to verify that both RTX 6000 GPUs are visible and that the environment can perform parallel operations:
+Run the following Python snippet to verify that both RTX 6000 GPUs are visible, the MKL libraries are linking correctly, and the environment can perform parallel operations:
 
 ```python
 import torch
@@ -65,9 +80,5 @@ for i in range(torch.cuda.device_count()):
 This setup is a core part of our ongoing research into **AI-Driven Software Intelligence and Collaboration**. A primary goal of this repository is the **mentorship of undergraduate and graduate researchers** through the full lifecycle of high-impact projects.
 
 * **Research Focus:** We leverage Large Language Models (LLMs) and datasets like BigCloneBench to automate complex software engineering tasks such as code summarization and clone detection.
-* **Mentorship:** Students contribute to this project by managing the AI infrastructure, configuring CUDA-accelerated environments, and conducting large-scale benchmarking.
+* **Mentorship:** Students contribute to this project by managing the AI infrastructure, configuring CUDA-accelerated environments, and conducting large-scale benchmarking. This includes gaining hands-on experience in resolving complex system-level dependencies, such as the Intel MKL binary conflicts documented above.
 * **Preparation:** By guiding students from initial environment design to the deployment of models like **SYNCode**, we are preparing the next generation of engineers for a future where AI and human expertise work in tandem.
-
-This infrastructure supports research that has been recognized at premier venues, including the **Best Paper Award at IEEE SERA 2025** and extensive studies presented at **ISSTA**.
-
----
