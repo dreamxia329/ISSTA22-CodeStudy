@@ -190,9 +190,9 @@ def train(args, train_dataset, model, tokenizer,pool):
     
     train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size)
     args.max_steps=args.epoch*len( train_dataloader)
-    args.save_steps=len( train_dataloader)
+    # # args.save_steps=len( train_dataloader)
     args.warmup_steps=len( train_dataloader)
-    args.logging_steps=len( train_dataloader)
+    # # args.logging_steps=len( train_dataloader)
     args.num_train_epochs=args.epoch
     model.to(args.device)
     # Prepare optimizer and schedule (linear warmup and decay)
@@ -243,7 +243,7 @@ def train(args, train_dataset, model, tokenizer,pool):
     global_step = args.start_step
     tr_loss, logging_loss,avg_loss,tr_nb,tr_num,train_loss = 0.0, 0.0,0.0,0,0,0
     best_mrr=0.0
-    best_f1=0
+    best_f1=-1
     # model.resize_token_embeddings(len(tokenizer))
     model.zero_grad()
     set_seed(args.seed)  # Added here for reproducibility (even between python 2 and 3)
@@ -317,6 +317,20 @@ def train(args, train_dataset, model, tokenizer,pool):
         if args.max_steps > 0 and global_step > args.max_steps:
             train_iterator.close()
             break
+
+    # Always save final model at end of training (fallback if no best checkpoint was saved)
+    if args.local_rank in [-1, 0]:
+        checkpoint_prefix = 'checkpoint-best-f1'
+        final_output_dir = os.path.join(args.output_dir, '{}'.format(checkpoint_prefix))
+        final_model_path = os.path.join(final_output_dir, 'model.bin')
+        if not os.path.exists(final_model_path):
+            logger.info("No best checkpoint found, saving final model...")
+            if not os.path.exists(final_output_dir):
+                os.makedirs(final_output_dir)
+            model_to_save = model.module if hasattr(model, 'module') else model
+            torch.save(model_to_save.state_dict(), final_model_path)
+            logger.info("Saved final model checkpoint to %s", final_model_path)
+
     return global_step, tr_loss / global_step
 
 
@@ -357,7 +371,7 @@ def evaluate(args, model, tokenizer, prefix="",pool=None,eval_when_training=Fals
     logits=np.concatenate(logits,0)
     y_trues=np.concatenate(y_trues,0)
     best_threshold=0
-    best_f1=0
+    best_f1=-1
     for i in range(1,100):
         threshold=i/100
         y_preds=logits[:,1]>threshold
