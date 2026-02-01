@@ -79,8 +79,10 @@ accelerate launch --multi_gpu --num_processes 2 run.py \
     --learning_rate 5e-5 \
     --max_grad_norm 1.0 \
     --evaluate_during_training \
-    --seed 3 2>&1 | tee ./saved_models/train_optimized.log
-
+    --save_steps 500 \
+    --save_total_limit 2 \
+    --overwrite_output_dir \
+    --seed 3 2>&1 | tee ./saved_models/train_optimized_v2.log
 ```
 
 ### Original Launcher (`run.sh`)

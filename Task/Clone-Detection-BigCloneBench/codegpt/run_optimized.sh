@@ -62,9 +62,12 @@ accelerate launch --multi_gpu --num_processes 2 run.py \
     --block_size 1024 \
     --train_batch_size 8 \
     --gradient_accumulation_steps 4 \
-    --eval_batch_size 16 \
+    --eval_batch_size 32 \
     --epoch 2 \
     --learning_rate 5e-5 \
     --max_grad_norm 1.0 \
     --evaluate_during_training \
-    --seed 3 2>&1 | tee ./saved_models/train_optimized.log
+    --save_steps 500 \
+    --save_total_limit 2 \
+    --overwrite_output_dir \
+    --seed 3 2>&1 | tee ./saved_models/train_optimized_v2.log
