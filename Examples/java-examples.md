@@ -112,7 +112,7 @@ Using a standard code tokenizer (like the one used in **CodeGPT**), here is how 
 
 --
 
-```
+```java
 public double calculateAverage(int[] numbers) {
     if (numbers == null || numbers.length == 0) {
         return 0.0;
