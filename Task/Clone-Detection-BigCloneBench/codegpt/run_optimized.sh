@@ -35,14 +35,20 @@ mkdir -p ./saved_models/
 #  | Training Duration| 2 Epochs               | 5 Epochs                   | Ensures convergence with     |
 #  | (--epoch)        |                        |                            | the larger batch size        |
 #  ---------------------------------------------------------------------------------------------------------
+# ==============================================================================
+# OPTIMIZED TRAINING SCRIPT (FINAL STABLE)
+# Usage: nohup bash run_optimized.sh > log_$(date +%m%d_%H%M).txt 2>&1 & disown
+# ==============================================================================
 
-# OPTIMIZATION NOTES:
-# 1. Launcher: Uses 'accelerate launch' for Distributed Data Parallel (DDP) on 2 GPUs.
-# 2. Context Window (--block_size): Set to 1024 (Model Max) to capture full function bodies for clone detection; your 48GB VRAM can easily handle this.
-# 3. Batch Size (--train_batch_size): Set to 32 per GPU (64 global) to maximize Tensor Core usage on RTX 6000 Ada.
-# 4. Epochs (--epoch): Increased to 5 to ensure convergence since the larger batch size results in fewer weight updates per epoch.
+# ==============================================================================
+# FINAL STABLE TRAINING SCRIPT
+# ==============================================================================
+# Configuration:
+# - Batch Size: 8 per GPU (Prevents OOM)
+# - Accumulation: 4 steps (Maintains Global Batch of 64 for accuracy)
+# - Precision: FP32 (Native compatibility)
 
-accelerate launch --multi_gpu --num_processes 2 --mixed_precision=fp16 run.py \
+accelerate launch --multi_gpu --num_processes 2 run.py \
     --output_dir=./saved_models/ \
     --model_type=gpt2 \
     --config_name=microsoft/CodeGPT-small-java-adaptedGPT2 \
@@ -54,11 +60,11 @@ accelerate launch --multi_gpu --num_processes 2 --mixed_precision=fp16 run.py \
     --eval_data_file=../dataset/valid.txt \
     --test_data_file=../dataset/test.txt \
     --block_size 1024 \
-    --train_batch_size 16 \
-    --gradient_accumulation_steps 2 \
-    --eval_batch_size 32 \
-    --epoch 5 \
-    --learning_rate 2e-5 \
+    --train_batch_size 8 \
+    --gradient_accumulation_steps 4 \
+    --eval_batch_size 16 \
+    --epoch 2 \
+    --learning_rate 5e-5 \
     --max_grad_norm 1.0 \
     --evaluate_during_training \
     --seed 3 2>&1 | tee ./saved_models/train_optimized.log

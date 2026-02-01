@@ -551,6 +551,7 @@ def main():
     
     pool = multiprocessing.Pool(cpu_cont)
     args = parser.parse_args()
+    if 'LOCAL_RANK' in os.environ: args.local_rank = int(os.environ['LOCAL_RANK'])
 
     # Setup distant debugging if needed
     if args.server_ip and args.server_port:
