@@ -21,6 +21,7 @@ The script contained a hardcoded condition that only allowed evaluation and savi
 * **The Issue:** In DDP, the main process is Rank 0. The original code forced Rank 0 to skip evaluation. Consequently, the `results` variable was never created, causing the script to crash with `UnboundLocalError` when attempting to check `if results['eval_f1'] > best_f1`.
 
 * **The Fix:** Updated condition to `if args.local_rank in [-1, 0] ...`.
+* **Patch Source:** [Commit 235f6c4](https://github.com/unoselab/ISSTA22-CodeStudy/commit/235f6c41cb0b0fec1a04528e5540bbf12891ecea#diff-f7331c5d651eee74b26539f43a9fd4940522d792881a8aec7663fe015c74dcf9) (Fix DDP save logic)
 
 ---
 
@@ -59,7 +60,7 @@ You must apply these `sed` commands to fix the Python script before running.
 # Fix 1: Initialize Local Rank from Environment
 sed -i "/args = parser.parse_args()/a \    if args.local_rank == -1 and 'LOCAL_RANK' in os.environ:\\n        args.local_rank = int(os.environ['LOCAL_RANK'])" run.py
 
-# Fix 2: Allow Rank 0 to Evaluate and Save
+# Fix 2: Allow Rank 0 to Evaluate and Save (Commit 235f6c4)
 sed -i "s/if args.local_rank == -1 and args.evaluate_during_training:/if args.local_rank in [-1, 0] and args.evaluate_during_training:/" run.py
 
 ```
