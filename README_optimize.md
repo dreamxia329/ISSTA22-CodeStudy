@@ -1,8 +1,3 @@
-제공해주신 정확한 **GitHub 커밋 링크(`a805deb`)**를 반영하여 `README_optimize.md`를 최종 업데이트했습니다.
-
-이 파일은 이번 최적화 작업의 **기술적 증명(Technical Proof)**이자 **실행 매뉴얼**로서 완벽한 기능을 할 것입니다.
-
-```markdown
 # BigCloneBench Training Optimization Report
 
 **Date:** January 31, 2026  
@@ -12,43 +7,50 @@
 ---
 
 ## 1. Performance Comparison
+
 We shifted from legacy `DataParallel` (DP) to `DistributedDataParallel` (DDP) via Hugging Face Accelerate. The difference in hardware utilization and model quality is drastic.
 
-| Metric | Original Script (Legacy) | Optimized Script (Final) | Impact |
-| :--- | :--- | :--- | :--- |
-| **Architecture** | Single Process (DP) | **Multi-Process (DDP)** | Eliminated the bottleneck where GPU 0 manages GPU 1. |
-| **GPU Utilization** | GPU 0: 99%, GPU 1: Idle/Uneven | **100% / 100%** | Perfect parallel scaling across both cards. |
-| **VRAM Usage** | ~13 GB per card (73GB wasted) | **~43 GB per card** | **3.3x more data** resides in memory per step. |
-| **Context Window** | 400 Tokens | **1024 Tokens** | Model reads **complete functions** instead of fragments. |
-| **Effective Batch** | 16 | **64** | **4x Stability.** See Section 2.C for math. |
+| Metric              | Original Script (Legacy)       | Optimized Script (Final) | Impact                                                   |
+| :------------------ | :----------------------------- | :----------------------- | :------------------------------------------------------- |
+| **Architecture**    | Single Process (DP)            | **Multi-Process (DDP)**  | Eliminated the bottleneck where GPU 0 manages GPU 1.     |
+| **GPU Utilization** | GPU 0: 99%, GPU 1: Idle/Uneven | **100% / 100%**          | Perfect parallel scaling across both cards.              |
+| **VRAM Usage**      | ~13 GB per card (73GB wasted)  | **~43 GB per card**      | **3.3x more data** resides in memory per step.           |
+| **Context Window**  | 400 Tokens                     | **1024 Tokens**          | Model reads **complete functions** instead of fragments. |
+| **Effective Batch** | 16                             | **64**                   | **4x Stability.** See Section 2.C for math.              |
 
 ---
 
 ## 2. Key Technical Changes & Evidence
 
 ### A. The "Double Loading" Bug Fix
+
 The legacy `run.py` script was not compatible with `accelerate`. It attempted to load the model on all GPUs simultaneously without knowing its rank, causing OOM errors.
 
 **The Fix:**
 We patched `run.py` to correctly identify the `LOCAL_RANK` from the environment variables, ensuring each process only talks to its assigned GPU.
 
 ### B. The "Silent Save Failure" Fix (Critical)
+
 The legacy script only allowed evaluation/saving if `local_rank == -1` (Single GPU). In DDP mode, the main process is `Rank 0`, so the script skipped saving, causing the process to crash at the end or exit without saving.
 
 **The Fix:**
 We modified the condition to allow `Rank 0` to perform evaluation and saving.
-* **Before:** `if args.local_rank == -1 and ...`
-* **After:** `if args.local_rank in [-1, 0] and ...`
-* **Patch Source:** [Commit a805deb](https://github.com/unoselab/ISSTA22-CodeStudy/commit/a805debfa4921f18f60cb5ace37fa9a9ad092675) (Fix DDP save logic)
+
+- **Before:** `if args.local_rank == -1 and ...`
+- **After:** `if args.local_rank in [-1, 0] and ...`
+- **Patch Source:** [Commit a805deb](https://github.com/unoselab/ISSTA22-CodeStudy/commit/a805debfa4921f18f60cb5ace37fa9a9ad092675) (Fix DDP save logic)
 
 ### C. Hyperparameter Tuning (Math Verification)
+
 We replaced the unstable small batch with **Gradient Accumulation** to stabilize training while using the massive 1024-token context.
 
 **Log Evidence:**
-* **Original Log:** `n_gpu=2`, `train_batch_size=16` (Split 8 per GPU). Total = **16**.
-* **Optimized Log:** `n_gpu=1` (per process), `train_batch_size=8`, `accum=4`.
+
+- **Original Log:** `n_gpu=2`, `train_batch_size=16` (Split 8 per GPU). Total = **16**.
+- **Optimized Log:** `n_gpu=1` (per process), `train_batch_size=8`, `accum=4`.
 
 **Optimized Batch Calculation:**
+
 $$
 \text{8 (GPU Batch)} \times \text{2 (Processors)} \times \text{4 (Accum Steps)} = \mathbf{64} \text{ (Global Batch)}
 $$
@@ -60,7 +62,8 @@ This **4x larger batch size** (64 vs 16) reduces gradient noise, ensuring the mo
 ## 3. Script Comparison
 
 ### Optimized Launcher (`run_optimized.sh`)
-*Uses `accelerate` for DDP, 1024 tokens, accumulation, and **safe checkpointing**.*
+
+_Uses `accelerate` for DDP, 1024 tokens, accumulation, and **safe checkpointing**._
 
 ```bash
 #!/bin/bash
@@ -96,7 +99,7 @@ accelerate launch --multi_gpu --num_processes 2 run.py \
 
 ### Original Launcher (`run.sh`)
 
-*Legacy Python execution, 400 tokens, small batch.*
+_Legacy Python execution, 400 tokens, small batch._
 
 ```bash
 #!/bin/bash
@@ -158,9 +161,4 @@ tail -f ./saved_models/train_optimized_v2.log
 
 # Monitor GPU Usage (Expect ~43GB/card)
 watch -n 1 nvidia-smi
-
-```
-
-```
-
 ```
