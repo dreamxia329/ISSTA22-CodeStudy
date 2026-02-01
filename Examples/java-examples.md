@@ -211,3 +211,46 @@ This specific example is excellent for your dataset because:
 1. **Ternary Operator:** It uses `? :`, allowing you to test if the model can recognize this as semantically identical to an `if-else` block.
 2. **Overloaded Logic:** It uses `Math.max` and multiple `lastIndexOf` calls, which challenges the model's ability to track variable values across library calls.
 3. **Cross-Platform Handling:** It addresses both `/` and `\` separators, a common pattern in secure software engineering.
+
+---
+
+To maximize the performance of your LLM-based clone detector, the construction of **Negative Samples (Label 0)** must go beyond simple random selection. The goal is to provide "Hard Negatives" that challenge the model to look past surface-level similarities.
+
+### Strategies for Constructing Negative Samples (Label 0)
+
+* **1. Random Shuffling (Easy Negatives)**
+* **Method:** Pair functions randomly from entirely different projects.
+* **Purpose:** Provides a baseline for the model to distinguish between different domains (e.g., a UI function vs. a math utility).
+
+
+* **2. Intra-Project/File Pairing (Hard Negatives)**
+* **Method:** Select two different functions from the **same Java file** or the same package.
+* **Why it works:** Functions in the same file often share the same author, variable naming conventions, and imported libraries.
+* **Impact:** Forces the model to ignore coding style and focus purely on the **logic and control flow**.
+
+
+* **3. Near-Miss Selection (Threshold-Based)**
+* **Method:** Use non-LLM tools (Deckard/iClone) to find pairs with **low-to-moderate similarity scores** (e.g., a Deckard similarity of 0.5) that did not meet the threshold for a clone.
+* **Impact:** These pairs often have similar AST structures but perform different tasks, improving the model's **precision**.
+
+
+
+---
+
+### Recommended Data Distribution
+
+To build a robust dataset, I recommend the following composition for your Negative Samples:
+
+| Category | Proportion | Source | Learning Objective |
+| --- | --- | --- | --- |
+| **Easy Negatives** | 30% | Cross-project random pairs | Basic domain separation. |
+| **Hard Negatives** | 70% | **Same file/package** pairs | Deep semantic discrimination. |
+
+---
+
+### Conceptual Workflow
+
+1. **Positive (1):** Pairs confirmed as clones by iClone/Deckard.
+2. **Negative (0):** Pairs from the same directory that were **not** flagged by the tools.
+
+By focusing on **Intra-project Hard Negatives**, you ensure that your LLM doesn't "cheat" by simply looking at the vocabulary, but instead learns to analyze the actual program structure.
