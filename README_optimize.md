@@ -27,23 +27,25 @@ The legacy `run.py` script was not compatible with `accelerate`. It attempted to
 **The Fix:**
 We patched `run.py` to correctly identify the `LOCAL_RANK` from the environment variables, ensuring each process only talks to its assigned GPU.
 
-```python
-# Inserted into run.py after args parsing:
-if args.local_rank == -1 and 'LOCAL_RANK' in os.environ:
-    args.local_rank = int(os.environ['LOCAL_RANK'])
+### B. The "Silent Save Failure" Fix (Critical)
+The legacy script only allowed evaluation/saving if `local_rank == -1` (Single GPU). In DDP mode, the main process is `Rank 0`, so the script skipped saving, causing the process to crash at the end or exit without saving.
 
-```
+**The Fix:**
+We modified the condition to allow `Rank 0` to perform evaluation and saving.
+* **Before:** `if args.local_rank == -1 and ...`
+* **After:** `if args.local_rank in [-1, 0] and ...`
 
-### B. Hyperparameter Tuning (Math Verification)
-
+### C. Hyperparameter Tuning (Math Verification)
 We replaced the unstable small batch with **Gradient Accumulation** to stabilize training while using the massive 1024-token context.
 
 **Log Evidence:**
-
 * **Original Log:** `n_gpu=2`, `train_batch_size=16` (Split 8 per GPU). Total = **16**.
 * **Optimized Log:** `n_gpu=1` (per process), `train_batch_size=8`, `accum=4`.
 
 **Optimized Batch Calculation:**
+$$
+\text{8 (GPU Batch)} \times \text{2 (Processors)} \times \text{4 (Accum Steps)} = \mathbf{64} \text{ (Global Batch)}
+$$
 
 This **4x larger batch size** (64 vs 16) reduces gradient noise, ensuring the model converges smoothly rather than oscillating.
 
@@ -52,14 +54,14 @@ This **4x larger batch size** (64 vs 16) reduces gradient noise, ensuring the mo
 ## 3. Script Comparison
 
 ### Optimized Launcher (`run_optimized.sh`)
-
-*Uses `accelerate` for DDP, 1024 tokens, and accumulation.*
+*Uses `accelerate` for DDP, 1024 tokens, accumulation, and **safe checkpointing**.*
 
 ```bash
 #!/bin/bash
 mkdir -p ./saved_models/
 
 # Launch with 2 processes (one per GPU)
+# Added --save_steps and --overwrite_output_dir to ensure checkpoints are saved safely
 accelerate launch --multi_gpu --num_processes 2 run.py \
     --output_dir=./saved_models/ \
     --model_type=gpt2 \
@@ -83,6 +85,7 @@ accelerate launch --multi_gpu --num_processes 2 run.py \
     --save_total_limit 2 \
     --overwrite_output_dir \
     --seed 3 2>&1 | tee ./saved_models/train_optimized_v2.log
+
 ```
 
 ### Original Launcher (`run.sh`)
@@ -118,12 +121,21 @@ python run.py \
 
 ## 4. How to Run
 
-### Step 1: Patch the Script (One-time)
+### Step 1: Patch the Script (Essential)
 
-Ensure `run.py` has the rank logic.
+You must apply **two patches** to `run.py` to support `accelerate`.
+
+**Patch 1: Initialize Local Rank correctly**
 
 ```bash
 sed -i "/args = parser.parse_args()/a \    if args.local_rank == -1 and 'LOCAL_RANK' in os.environ:\\n        args.local_rank = int(os.environ['LOCAL_RANK'])" run.py
+
+```
+
+**Patch 2: Enable Saving for Rank 0**
+
+```bash
+sed -i "s/if args.local_rank == -1 and args.evaluate_during_training:/if args.local_rank in [-1, 0] and args.evaluate_during_training:/" run.py
 
 ```
 
@@ -136,7 +148,7 @@ Run inside `tmux` to ensure persistence.
 bash run_optimized.sh
 
 # Monitor Logs
-tail -f ./saved_models/train_optimized.log
+tail -f ./saved_models/train_optimized_v2.log
 
 # Monitor GPU Usage (Expect ~43GB/card)
 watch -n 1 nvidia-smi
