@@ -28,5 +28,5 @@ FCDetector/target/
 # --- IDE Settings ---
 .vscode/
 .idea/
-FCDetector/.classpath
-FCDetector/.project
+.classpath
+.project
