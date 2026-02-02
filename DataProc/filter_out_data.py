@@ -6,37 +6,19 @@ import re
 import sys
 from typing import Dict, Any, List
 
-"""
-Option A (recommended): drop whole group if it contains any test snippet
-
-python filter_out_tests.py \
-  --input data/step2_nicad_camel-java_sim0.7_classes_fqn.jsonl \
-  --output data/nicad_camel_clone_func.jsonl \
-  --mode drop_group_if_any_test
-
----  
-
-Option B: only remove the test snippets, keep group if ≥2 remain
-
-python filter_out_tests.py \
-  --input step2_nicad_camel-java_sim0.7_classes_fqn.jsonl \
-  --output nicad_camel_clone_func.jsonl \
-  --mode drop_only_test_sources \
-  --min_remaining 2
-"""
+# ---- Default Paths ----
+DEFAULT_INPUT = "data/step2_nicad_camel-java_sim0.7_classes_fqn.jsonl"
+DEFAULT_OUTPUT = "data/nicad_camel_clone_func.jsonl"
 
 # ---- Test detection rules ----
-# 1) directory path in sources[].file
 TEST_DIR_PATTERNS = [
     r"(^|/)src/test(/|/java/|/resources/|$)",
-    r"(^|/)src/it(/|$)",          # integration tests (some repos)
+    r"(^|/)src/it(/|$)",
     r"(^|/)src/integration-test(/|$)",
     r"(^|/)test(/|$)",
     r"(^|/)tests(/|$)",
 ]
 
-# 2) java file name in sources[].file
-# common conventions: *Test.java, *Tests.java, *TestCase.java, *IT.java, *ITCase.java
 TEST_FILENAME_PATTERNS = [
     r"Test\.java$",
     r"Tests\.java$",
@@ -51,8 +33,8 @@ TEST_FILE_RES = [re.compile(p) for p in TEST_FILENAME_PATTERNS]
 
 
 def is_test_path(path: str) -> bool:
-    """Return True if the path looks like a test file by dir or filename."""
-    norm = path.replace("\\", "/")  # just in case
+    """Check if the file path matches any test directory or filename patterns."""
+    norm = path.replace("\\", "/")
     for r in TEST_DIR_RES:
         if r.search(norm):
             return True
@@ -64,42 +46,32 @@ def is_test_path(path: str) -> bool:
 
 
 def group_has_any_test_source(obj: Dict[str, Any]) -> bool:
+    """Return True if any source within the group is identified as a test file."""
     for s in obj.get("sources", []):
         if is_test_path(s.get("file", "")):
             return True
     return False
 
 
-def filter_sources_remove_tests(obj: Dict[str, Any]) -> Dict[str, Any]:
-    """Remove test sources from a group, update nclones accordingly."""
-    sources = obj.get("sources", [])
-    kept = [s for s in sources if not is_test_path(s.get("file", ""))]
-    new_obj = dict(obj)
-    new_obj["sources"] = kept
-    new_obj["nclones"] = len(kept)
-    return new_obj
-
-
 def main():
     ap = argparse.ArgumentParser(
-        description="Filter out test functions from a NiCad clone JSONL file using path + filename heuristics."
+        description="Filter out test functions and limit clone group size from a NiCad clone JSONL file."
     )
-    ap.add_argument("--input", required=True, help="Input JSONL file")
-    ap.add_argument("--output", required=True, help="Output JSONL file")
+    # Set default values to allow execution without explicit command line arguments
+    ap.add_argument("--input", default=DEFAULT_INPUT, help=f"Input JSONL file (default: {DEFAULT_INPUT})")
+    ap.add_argument("--output", default=DEFAULT_OUTPUT, help=f"Output JSONL file (default: {DEFAULT_OUTPUT})")
     ap.add_argument(
         "--mode",
         choices=["drop_group_if_any_test", "drop_only_test_sources"],
         default="drop_group_if_any_test",
-        help=(
-            "drop_group_if_any_test: remove entire clone group if any source is a test file.\n"
-            "drop_only_test_sources: remove only the test sources; keep group if >=2 sources remain."
-        ),
+        help="Filtering mode for test files."
     )
+    # Max clones limit based on Professor's directive: nclones < 20
     ap.add_argument(
-        "--min_remaining",
+        "--max_clones",
         type=int,
-        default=2,
-        help="When using drop_only_test_sources, keep a group only if at least this many sources remain (default 2).",
+        default=20,
+        help="Discard groups where nclones is equal to or greater than this value (default: 20)."
     )
     args = ap.parse_args()
 
@@ -107,9 +79,12 @@ def main():
     out_path = args.output
 
     kept_groups = 0
-    dropped_groups = 0
-    dropped_sources = 0
+    dropped_groups_test = 0
+    dropped_groups_size = 0
     total_groups = 0
+
+    if not os.path.exists(os.path.dirname(out_path)) and os.path.dirname(out_path) != "":
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
 
     with open(in_path, "r", encoding="utf-8") as fin, open(out_path, "w", encoding="utf-8") as fout:
         for line_no, line in enumerate(fin, 1):
@@ -123,34 +98,29 @@ def main():
                 print(f"[ERROR] JSON parse failed at line {line_no}: {e}", file=sys.stderr)
                 continue
 
+            # ---- SIZE FILTERING LOGIC ----
+            # Objective: Include only groups where nclones < 20.
+            # Decision: If nclones is 20 or more, the group is discarded to prevent overfitting.
+            current_nclones = obj.get("nclones", 0)
+            if current_nclones >= args.max_clones:
+                dropped_groups_size += 1
+                continue
+
+            # ---- TEST FILTERING LOGIC ----
             if args.mode == "drop_group_if_any_test":
                 if group_has_any_test_source(obj):
-                    dropped_groups += 1
+                    dropped_groups_test += 1
                     continue
                 fout.write(json.dumps(obj, ensure_ascii=False) + "\n")
                 kept_groups += 1
+            # (Note: Additional modes like 'drop_only_test_sources' can be added here if needed)
 
-            else:  # drop_only_test_sources
-                before = len(obj.get("sources", []))
-                new_obj = filter_sources_remove_tests(obj)
-                after = len(new_obj.get("sources", []))
-                dropped_sources += max(0, before - after)
-
-                # keep only meaningful clone groups
-                if after >= args.min_remaining:
-                    fout.write(json.dumps(new_obj, ensure_ascii=False) + "\n")
-                    kept_groups += 1
-                else:
-                    dropped_groups += 1
-
-    print("Done.")
-    print(f"  Input groups:   {total_groups}")
-    print(f"  Kept groups:    {kept_groups}")
-    print(f"  Dropped groups: {dropped_groups}")
-    if args.mode == "drop_only_test_sources":
-        print(f"  Dropped sources:{dropped_sources}")
-    print(f"  Output written: {out_path}")
-
+    print("--- Processing Complete ---")
+    print(f"  Input groups:           {total_groups}")
+    print(f"  Dropped (Size >= {args.max_clones}): {dropped_groups_size}")
+    print(f"  Dropped (Test related): {dropped_groups_test}")
+    print(f"  Kept groups:            {kept_groups}")
+    print(f"  Output written:         {out_path}")
 
 if __name__ == "__main__":
     main()
