@@ -4,10 +4,11 @@ import re
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import sys
 
-# Default input file
+# Default input file (Change if needed)
 DEFAULT_INPUT = "data/nicad_camel_clone_func.jsonl"
-OUTPUT_IMAGE = "token_distribution_clone_func_unique.png"
+OUTPUT_IMAGE = "token_distribution_clone_func.png"
 
 def java_tokenize_standard(code):
     """
@@ -36,7 +37,7 @@ def java_tokenize_standard(code):
     return clean_tokens
 
 def main():
-    parser = argparse.ArgumentParser(description="Plot Standard Token distribution for Unique Functions based on qualified_name.")
+    parser = argparse.ArgumentParser(description="Plot Standard Token distribution for Clone Functions.")
     parser.add_argument("--input", default=DEFAULT_INPUT, help="Input JSONL file")
     parser.add_argument("--output", default=OUTPUT_IMAGE, help="Output image filename")
     args = parser.parse_args()
@@ -47,9 +48,9 @@ def main():
         print(f"Error: File {args.input} not found.")
         return
 
-    # Dictionary to store unique functions: {qualified_name: token_count}
-    unique_functions = {}
+    token_counts = []
     total_groups = 0
+    total_funcs = 0
 
     try:
         with open(args.input, 'r', encoding='utf-8') as f:
@@ -64,14 +65,10 @@ def main():
                     sources = data.get("sources", [])
                     for src in sources:
                         code = src.get("code", "")
-                        q_name = src.get("qualified_name")
-                        
-                        # Only process if we haven't seen this qualified_name before
-                        # (Or if q_name is missing, we might skip or fallback to file+range, 
-                        # but here we strictly follow the instruction to use qualified_name)
-                        if code and q_name and q_name not in unique_functions:
+                        if code:
                             tokens = java_tokenize_standard(code)
-                            unique_functions[q_name] = len(tokens)
+                            token_counts.append(len(tokens))
+                            total_funcs += 1
                             
                 except json.JSONDecodeError:
                     continue
@@ -79,13 +76,11 @@ def main():
         print(f"Error reading file: {e}")
         return
 
-    if not unique_functions:
+    if not token_counts:
         print("No data found.")
         return
 
-    # Convert values to numpy array
-    counts = np.array(list(unique_functions.values()))
-    total_unique_funcs = len(counts)
+    counts = np.array(token_counts)
     
     # Calculate Statistics
     avg_len = np.mean(counts)
@@ -93,8 +88,7 @@ def main():
     p99 = np.percentile(counts, 99)
     max_len = np.max(counts)
 
-    print(f"Analyzed {total_groups} clone groups.")
-    print(f"Found {total_unique_funcs} UNIQUE functions (by qualified_name).")
+    print(f"Analyzed {total_groups} clone groups containing {total_funcs} functions.")
     print(f"  Avg: {avg_len:.2f}")
     print(f"  95th %: {p95:.2f}")
     print(f"  99th %: {p99:.2f}")
@@ -104,9 +98,9 @@ def main():
     plt.figure(figsize=(12, 6))
 
     # Histogram (Log Scale)
-    n, bins, patches = plt.hist(counts, bins=100, color='teal', edgecolor='black', alpha=0.7, log=True)
+    n, bins, patches = plt.hist(counts, bins=100, color='mediumpurple', edgecolor='black', alpha=0.7, log=True)
     
-    plt.title(f'Standard Token Distribution (Unique Functions) - Total {total_unique_funcs} funcs', fontsize=14)
+    plt.title(f'Standard Token Distribution (Clone Functions via NiCad/Camel) - Total {total_funcs} funcs', fontsize=14)
     plt.xlabel('Number of Standard Tokens (Logical Size)', fontsize=12)
     plt.ylabel('Frequency (Log Scale)', fontsize=12)
     plt.grid(axis='y', linestyle='--', alpha=0.5)
