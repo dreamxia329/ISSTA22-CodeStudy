@@ -4,10 +4,11 @@ import re
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+from collections import defaultdict
 
 # Default input file
 DEFAULT_INPUT = "data/nicad_camel_clone_func.jsonl"
-OUTPUT_IMAGE = "token_distribution_clone_func_unique.png"
+OUTPUT_IMAGE = "token_distribution_combined.png"
 
 def java_tokenize_standard(code):
     """
@@ -31,12 +32,11 @@ def java_tokenize_standard(code):
     )
     
     raw_matches = token_pattern.findall(code)
-    # Filter out comments
     clean_tokens = [t for t in raw_matches if not (t.startswith('//') or t.startswith('/*'))]
     return clean_tokens
 
 def main():
-    parser = argparse.ArgumentParser(description="Plot Standard Token distribution for Unique Functions based on qualified_name.")
+    parser = argparse.ArgumentParser(description="Plot combined token distribution and list duplicates.")
     parser.add_argument("--input", default=DEFAULT_INPUT, help="Input JSONL file")
     parser.add_argument("--output", default=OUTPUT_IMAGE, help="Output image filename")
     args = parser.parse_args()
@@ -47,8 +47,9 @@ def main():
         print(f"Error: File {args.input} not found.")
         return
 
-    # Dictionary to store unique functions: {qualified_name: token_count}
-    unique_functions = {}
+    all_token_counts = []           # List for ALL instances
+    unique_token_map = {}           # Dict for UNIQUE instances {qualified_name: count}
+    frequency_map = defaultdict(int) # Dict to track frequency {qualified_name: occurrences}
     total_groups = 0
 
     try:
@@ -60,18 +61,22 @@ def main():
                     data = json.loads(line)
                     total_groups += 1
                     
-                    # Iterate over all sources in the clone group
                     sources = data.get("sources", [])
                     for src in sources:
                         code = src.get("code", "")
                         q_name = src.get("qualified_name")
                         
-                        # Only process if we haven't seen this qualified_name before
-                        # (Or if q_name is missing, we might skip or fallback to file+range, 
-                        # but here we strictly follow the instruction to use qualified_name)
-                        if code and q_name and q_name not in unique_functions:
+                        if code:
                             tokens = java_tokenize_standard(code)
-                            unique_functions[q_name] = len(tokens)
+                            cnt = len(tokens)
+                            
+                            # 1. Track All Instances
+                            all_token_counts.append(cnt)
+                            
+                            # 2. Track Unique Functions & Frequency
+                            if q_name:
+                                unique_token_map[q_name] = cnt
+                                frequency_map[q_name] += 1
                             
                 except json.JSONDecodeError:
                     continue
@@ -79,44 +84,61 @@ def main():
         print(f"Error reading file: {e}")
         return
 
-    if not unique_functions:
+    if not all_token_counts:
         print("No data found.")
         return
 
-    # Convert values to numpy array
-    counts = np.array(list(unique_functions.values()))
-    total_unique_funcs = len(counts)
+    # Convert to numpy arrays
+    all_counts = np.array(all_token_counts)
+    unique_counts = np.array(list(unique_token_map.values()))
     
-    # Calculate Statistics
-    avg_len = np.mean(counts)
-    p95 = np.percentile(counts, 95)
-    p99 = np.percentile(counts, 99)
-    max_len = np.max(counts)
+    # Identify Duplicates
+    duplicates = [(name, count) for name, count in frequency_map.items() if count > 1]
+    # Sort duplicates by frequency (descending)
+    duplicates.sort(key=lambda x: x[1], reverse=True)
 
-    print(f"Analyzed {total_groups} clone groups.")
-    print(f"Found {total_unique_funcs} UNIQUE functions (by qualified_name).")
-    print(f"  Avg: {avg_len:.2f}")
-    print(f"  95th %: {p95:.2f}")
-    print(f"  99th %: {p99:.2f}")
-    print(f"  Max: {max_len}")
+    # --- Statistics Report ---
+    print(f"\n=== Analysis Report ===")
+    print(f"Total Clone Groups: {total_groups}")
+    
+    print(f"\n[1] All Instances (Volume)")
+    print(f"  Count:   {len(all_counts)}")
+    print(f"  Avg:     {np.mean(all_counts):.2f}")
+    print(f"  Max:     {np.max(all_counts)}")
+    
+    print(f"\n[2] Unique Functions (Diversity)")
+    print(f"  Count:   {len(unique_counts)}")
+    print(f"  Avg:     {np.mean(unique_counts):.2f}")
+    print(f"  Max:     {np.max(unique_counts)}")
+
+    print(f"\n[3] Duplication Impact")
+    print(f"  Duplicated Instances: {len(all_counts) - len(unique_counts)}")
+    print(f"  Duplication Ratio:    {1.0 - (len(unique_counts) / len(all_counts)):.2%}")
+
+    print(f"\n[4] List of Duplicated Functions ({len(duplicates)} distinct functions found multiple times)")
+    if duplicates:
+        print(f"{'Count':<6} | {'Qualified Name'}")
+        print("-" * 80)
+        for name, count in duplicates:
+            print(f"{count:<6} | {name}")
+    else:
+        print("  None found.")
 
     # --- Plotting ---
     plt.figure(figsize=(12, 6))
 
-    # Histogram (Log Scale)
-    n, bins, patches = plt.hist(counts, bins=100, color='teal', edgecolor='black', alpha=0.7, log=True)
+    # Plot Total Instances first (Background, Lighter)
+    plt.hist(all_counts, bins=100, color='silver', edgecolor='gray', alpha=0.5, log=True, label='All Instances (Includes Duplicates)')
     
-    plt.title(f'Standard Token Distribution (Unique Functions) - Total {total_unique_funcs} funcs', fontsize=14)
+    # Plot Unique Functions on top (Foreground, Darker)
+    plt.hist(unique_counts, bins=100, color='teal', edgecolor='black', alpha=0.7, log=True, label='Unique Functions (Distinct Logic)')
+    
+    plt.title(f'Standard Token Distribution: All vs. Unique', fontsize=14)
     plt.xlabel('Number of Standard Tokens (Logical Size)', fontsize=12)
     plt.ylabel('Frequency (Log Scale)', fontsize=12)
     plt.grid(axis='y', linestyle='--', alpha=0.5)
-
-    # Reference Lines
-    plt.axvline(x=p95, color='orange', linestyle='--', linewidth=2, label=f'95th Percentile ({int(p95)})')
-    plt.axvline(x=p99, color='red', linestyle='--', linewidth=2, label=f'99th Percentile ({int(p99)})')
-    plt.axvline(x=avg_len, color='green', linestyle='-', linewidth=2, label=f'Average ({int(avg_len)})')
-
-    plt.legend()
+    
+    plt.legend(loc='upper right', fontsize=10)
     plt.tight_layout()
 
     # Save
