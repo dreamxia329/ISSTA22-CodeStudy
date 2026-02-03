@@ -3,8 +3,10 @@ import os
 import sys
 
 # Default file paths
-DEFAULT_INPUT = "data/nicad_camel_clone_func_small.jsonl"
-DEFAULT_OUTPUT = "data/nicad_camel_clone_data_small.jsonl"
+# DEFAULT_INPUT = "data/nicad_camel_clone_func_small.jsonl"
+# DEFAULT_OUTPUT = "data/nicad_camel_clone_data_small.jsonl"
+DEFAULT_INPUT = "data/nicad_camel_clone_func.jsonl"
+DEFAULT_OUTPUT = "data/nicad_camel_clone_data.jsonl"
 
 def add_unique_ids(input_file, output_file):
     if not os.path.exists(input_file):

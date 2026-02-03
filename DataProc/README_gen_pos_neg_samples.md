@@ -1,5 +1,17 @@
 # Generating Positive & Negative Samples for Clone Detection
 
+## **High-level overview**
+
+| Item | BigCloneBench (`./data/train.txt`) | NiCad Camel (`nicad_camel_clone_data.jsonl`, Sim: 0.7) |
+|---|---:|---:|
+| Total functions | 7,302 | 2,739 |
+| Clone groups | N/A  | 985 groups |
+| Total possible pairs (Universe) | N/A | 3,749,691 |
+| Positive pairs (Label = 1) | 450,862 | 4,068 (max possible) |
+| Negative pairs (Label = 0) | 450,166 | 3,745,623 (max possible) |
+
+---
+
 This guide explains how we prepare training data for our code clone detection models.  
 Specifically, it details how we calculate and generate **Positive Samples** (clones) and **Negative Samples** (non-clones) from our dataset.
 
@@ -91,15 +103,33 @@ python gen_neg_clone_sample.py
 The script will print a detailed breakdown of the math for the current dataset:
 
 ```text
+(base_py311) √ DataProc % py gen_neg_clone_sample.py 
+--- Loading data from: data/nicad_camel_clone_data.jsonl ---
+Loaded 985 groups with 2739 total functions.
+
 === Detailed Calculation of Dataset Capacity ===
-1. Total Functions (N): 2,739
-   - Total possible pairs (Universe) = 3,749,691 pairs
+1. Total Functions (N): 2739
+   - We have 2739 unique functions in the dataset.
+   - Total possible pairs (Universe) = N * (N - 1) / 2
+   - 2739 * 2738 / 2 = 3,749,691 pairs
 
-2. Max Possible Positive Samples (Clones): 3,822
+2. Max Possible Positive Samples (Clones): 4,068
    - Calculation: Sum of pairs within each clone group.
+   - Formula: Sum( size * (size - 1) / 2 ) for all groups.
+   - This represents all pairs where Label = 1.
 
-3. Max Possible Negative Samples (Non-Clones): 3,745,869
-   - Formula: Universe - Positives
+3. Max Possible Negative Samples (Non-Clones): 3,745,623
+   - Calculation: Universe - Positives
+   - Formula: 3,749,691 - 4,068 = 3,745,623
+   - This represents all pairs where Label = 0.
+================================================
+
+--- Generating 4068 Negative Samples (Balanced) ---
+Done. Generated 4068 unique negative pairs.
+JSONL saved to: data/nicad_camel_neg_samples.jsonl
+TXT saved to: data/nicad_camel_neg_samples.txt (0 lines)
+HTML report generated: display_neg_sample.html
+Markdown report generated: data/display_neg_sample.md
 
 ```
 
