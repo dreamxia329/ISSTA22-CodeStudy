@@ -1,28 +1,56 @@
 # Generating Positive & Negative Samples for Clone Detection
 
-This guide explains how we prepare training data for our code clone detection models. Specifically, it details how we calculate and generate **Positive Samples** (clones) and **Negative Samples** (non-clones) from our dataset.
+This guide explains how we prepare training data for our code clone detection models.  
+Specifically, it details how we calculate and generate **Positive Samples** (clones) and **Negative Samples** (non-clones) from our dataset.
+
+---
 
 ## 1. Math Background: Counting Pairs
 
 To create a training dataset, we need to form "pairs" of functions. Understanding how many unique pairs exist in a group is crucial for balancing our data.
 
+---
+
 ### The "Handshake" Analogy (Combinatorics)
 
-Imagine a Clone Group containing **4 functions** (A, B, C, D). Since they are all clones of each other, every function must be paired with every _other_ function. This forms a **Complete Graph**.
+Imagine a Clone Group containing **4 functions** (A, B, C, D). Since they are all clones of each other, every function must be paired with every *other* function. This forms a **Complete Graph**.
 
-**How to calculate the number of pairs:**
+---
 
-1. **Connections:** Each of the 4 functions can connect to 3 other people (itself excluded).
+### How to calculate the number of pairs
+
+1. **Connections:** Each of the 4 functions can connect to 3 other functions (itself excluded).
+
+$$
+4 \times 3 = 12 \text{ connections}
+$$
 
 2. **Removing Duplicates:** A connection from A to B is the same as B to A. We must divide by 2 to remove this double counting.
 
-**The General Formula**
+$$
+\frac{12}{2} = 6 \text{ unique pairs}
+$$
+
+---
+
+### The General Formula
 
 For any group of size $N$, the maximum number of unique pairs is calculated using the "N choose 2" formula:
 
-$$\text{Total Pairs} = \binom{N}{2} = \frac{N(N-1)}{2}$$
+$$
+\text{Total Pairs} = \binom{N}{2} = \frac{N(N-1)}{2}
+$$
 
-Example:Clone Group Size: 5 functionsCalculation: $\frac{5 \times 4}{2} = 10$ pairs.
+---
+
+### Example
+
+- **Clone Group Size:** 5 functions  
+- **Calculation:**
+
+$$
+\frac{5 \times 4}{2} = 10 \text{ pairs}
+$$
 
 ---
 
@@ -91,47 +119,26 @@ The script will print a detailed breakdown of the math for the current dataset:
 
 ---
 
-## 4. Visual Inspection
 
-The script generates a Markdown report (`data/display_neg_sample.md`) to help you verify the quality of the negative samples directly in your browser or editor.
+## 4. Visual Inspection (Generated Report)
 
-### Example Output (from display_neg_sample.md)
+The script generates a Markdown report to help you verify the quality of the negative samples. You can click the link below to view the actual generated pairs:
 
-| Pair ID | Function A (Source)  | Function B (Target) |
-| ------- | -------------------- | ------------------- |
-| **#1**  | **ID:** `1423_0`<br> |
+*(The file above `data/display_neg_sample.md` is automatically updated every time you run the script)*
 
-<br>`Camel.load()`<br>
+### 🔍 Negative Sample Inspection (generated)
 
-<br><pre>public void load() {<br>
+| Pair ID | Function A (Source) | Function B (Target) |
+| :--- | :--- | :--- |
+| **#1** | <b>ID:</b> `11_6`<br>`org.apache.camel.component.xmlsecurity.api.DefaultXmlSignature2Message.omitXmlDeclaration(Message message, Input input)`<br><pre>    protected Boolean omitXmlDeclaration(Message message, Input input) {<br>        Boolean omitXmlDeclaration = message.getHeader(XmlSignatureConstants.HEADER_OMIT_XML_DECLARATION, Boolean.class);<br>        if (omitXmlDeclaration == null) {<br>            omitXmlDeclaration = input.omitXmlDeclaration();<br>        }...</pre> | <b>ID:</b> `9_1`<br>`org.apache.camel.component.caffeine.cache.CaffeineCacheEndpoint.doStart()`<br><pre>    protected void doStart() throws Exception {<br>        super.doStart();<br>        cache = CamelContextHelper.lookup(getCamelContext(), cacheName, Cache.class);<br>        if (cache == null) {<br>            if (configuration.isCreateCacheIfNotExist()) {...</pre> |
+| **#2** | <b>ID:</b> `13_11`<br>`org.apache.camel.component.caffeine.cache.CaffeineCacheProducer.setResult(Message message, boolean success, Object result, Object oldValue)`<br><pre>    private void setResult(Message message, boolean success, Object result, Object oldValue) {<br>        message.setHeader(CaffeineConstants.ACTION_SUCCEEDED, success);<br>        message.setHeader(CaffeineConstants.ACTION_HAS_RESULT, oldValue != null &#124;&#124; result != null);<br><br>        if (oldValue != null) {...</pre> | <b>ID:</b> `12_8`<br>`org.apache.camel.component.caffeine.cache.CaffeineCacheProducer.getValue(final Message message, final String type)`<br><pre>    private Object getValue(final Message message, final String type) throws Exception {<br>        Object value = message.getHeader(CaffeineConstants.VALUE);<br>        if (value == null) {<br>            if (type != null) {<br>                Class<?> clazz = getEndpoint().getCamelContext().getClassResolver().resolveClass(type);...</pre> |
+| **#3** | <b>ID:</b> `13_11`<br>`org.apache.camel.component.caffeine.cache.CaffeineCacheProducer.setResult(Message message, boolean success, Object result, Object oldValue)`<br><pre>    private void setResult(Message message, boolean success, Object result, Object oldValue) {<br>        message.setHeader(CaffeineConstants.ACTION_SUCCEEDED, success);<br>        message.setHeader(CaffeineConstants.ACTION_HAS_RESULT, oldValue != null &#124;&#124; result != null);<br><br>        if (oldValue != null) {...</pre> | <b>ID:</b> `11_5`<br>`org.apache.camel.component.caffeine.cache.CaffeineCacheProducer.getKey(final Message message)`<br><pre>    private Object getKey(final Message message) throws Exception {<br>        String value;<br>        value = message.getHeader(CaffeineConstants.KEY, String.class);<br>        if (value == null) {<br>            value = configuration.getKey();...</pre> |
+| **#4** | <b>ID:</b> `13_10`<br>`org.apache.camel.component.ehcache.EhcacheProducer.setResult(Message message, boolean success, Object result, Object oldValue)`<br><pre>    private void setResult(Message message, boolean success, Object result, Object oldValue) {<br>        message.setHeader(EhcacheConstants.ACTION_SUCCEEDED, success);<br>        message.setHeader(EhcacheConstants.ACTION_HAS_RESULT, oldValue != null &#124;&#124; result != null);<br><br>        if (oldValue != null) {...</pre> | <b>ID:</b> `11_6`<br>`org.apache.camel.component.xmlsecurity.api.DefaultXmlSignature2Message.omitXmlDeclaration(Message message, Input input)`<br><pre>    protected Boolean omitXmlDeclaration(Message message, Input input) {<br>        Boolean omitXmlDeclaration = message.getHeader(XmlSignatureConstants.HEADER_OMIT_XML_DECLARATION, Boolean.class);<br>        if (omitXmlDeclaration == null) {<br>            omitXmlDeclaration = input.omitXmlDeclaration();<br>        }...</pre> |
+| **#5** | <b>ID:</b> `11_4`<br>`org.apache.camel.component.caffeine.load.CaffeineLoadCacheProducer.getKey(final Message message)`<br><pre>    private Object getKey(final Message message) throws Exception {<br>        String value = message.getHeader(CaffeineConstants.KEY, String.class);<br>        if (value == null) {<br>            value = configuration.getKey();<br>        }...</pre> | <b>ID:</b> `13_11`<br>`org.apache.camel.component.caffeine.cache.CaffeineCacheProducer.setResult(Message message, boolean success, Object result, Object oldValue)`<br><pre>    private void setResult(Message message, boolean success, Object result, Object oldValue) {<br>        message.setHeader(CaffeineConstants.ACTION_SUCCEEDED, success);<br>        message.setHeader(CaffeineConstants.ACTION_HAS_RESULT, oldValue != null &#124;&#124; result != null);<br><br>        if (oldValue != null) {...</pre> |
+| **#6** | <b>ID:</b> `10_2`<br>`org.apache.camel.component.caffeine.load.CaffeineLoadCacheProducer.onInvalidateAll(Message message)`<br><pre>    public void onInvalidateAll(Message message) {<br>        Set<?> keys = message.getHeader(CaffeineConstants.KEYS, Set.class);<br>         <br>        if (keys == null) {<br>            cache.invalidateAll();...</pre> | <b>ID:</b> `13_10`<br>`org.apache.camel.component.ehcache.EhcacheProducer.setResult(Message message, boolean success, Object result, Object oldValue)`<br><pre>    private void setResult(Message message, boolean success, Object result, Object oldValue) {<br>        message.setHeader(EhcacheConstants.ACTION_SUCCEEDED, success);<br>        message.setHeader(EhcacheConstants.ACTION_HAS_RESULT, oldValue != null &#124;&#124; result != null);<br><br>        if (oldValue != null) {...</pre> |
+| **#7** | <b>ID:</b> `11_5`<br>`org.apache.camel.component.caffeine.cache.CaffeineCacheProducer.getKey(final Message message)`<br><pre>    private Object getKey(final Message message) throws Exception {<br>        String value;<br>        value = message.getHeader(CaffeineConstants.KEY, String.class);<br>        if (value == null) {<br>            value = configuration.getKey();...</pre> | <b>ID:</b> `13_10`<br>`org.apache.camel.component.ehcache.EhcacheProducer.setResult(Message message, boolean success, Object result, Object oldValue)`<br><pre>    private void setResult(Message message, boolean success, Object result, Object oldValue) {<br>        message.setHeader(EhcacheConstants.ACTION_SUCCEEDED, success);<br>        message.setHeader(EhcacheConstants.ACTION_HAS_RESULT, oldValue != null &#124;&#124; result != null);<br><br>        if (oldValue != null) {...</pre> |
+| **#8** | <b>ID:</b> `9_1`<br>`org.apache.camel.component.caffeine.cache.CaffeineCacheEndpoint.doStart()`<br><pre>    protected void doStart() throws Exception {<br>        super.doStart();<br>        cache = CamelContextHelper.lookup(getCamelContext(), cacheName, Cache.class);<br>        if (cache == null) {<br>            if (configuration.isCreateCacheIfNotExist()) {...</pre> | <b>ID:</b> `10_2`<br>`org.apache.camel.component.caffeine.load.CaffeineLoadCacheProducer.onInvalidateAll(Message message)`<br><pre>    public void onInvalidateAll(Message message) {<br>        Set<?> keys = message.getHeader(CaffeineConstants.KEYS, Set.class);<br>         <br>        if (keys == null) {<br>            cache.invalidateAll();...</pre> |
+| **#9** | <b>ID:</b> `12_8`<br>`org.apache.camel.component.caffeine.cache.CaffeineCacheProducer.getValue(final Message message, final String type)`<br><pre>    private Object getValue(final Message message, final String type) throws Exception {<br>        Object value = message.getHeader(CaffeineConstants.VALUE);<br>        if (value == null) {<br>            if (type != null) {<br>                Class<?> clazz = getEndpoint().getCamelContext().getClassResolver().resolveClass(type);...</pre> | <b>ID:</b> `11_5`<br>`org.apache.camel.component.caffeine.cache.CaffeineCacheProducer.getKey(final Message message)`<br><pre>    private Object getKey(final Message message) throws Exception {<br>        String value;<br>        value = message.getHeader(CaffeineConstants.KEY, String.class);<br>        if (value == null) {<br>            value = configuration.getKey();...</pre> |
 
-<br> super.load();<br>
 
-<br>...</pre> | **ID:** `99_2`<br>
-
-<br>`Kafka.send()`<br>
-
-<br><pre>public void send() {<br>
-
-<br> producer.send(msg);<br>
-
-<br>...</pre> |
-| **#2** | **ID:** `502_4`<br>
-
-<br>`Util.parse()`<br>
-
-<br><pre>public int parse(String s) {<br>
-
-<br> return Integer.parseInt(s);<br>
-
-<br>...</pre> | **ID:** `12_8`<br>
-
-<br>`Auth.login()`<br>
-
-<br><pre>public boolean login() {<br>
-
-<br> if (checkCredentials()) ...<br>
-
-<br>...</pre> |
-
-**Note:** The HTML report (`display_neg_sample.html`) provides a more detailed side-by-side view with syntax highlighting support if opened in a browser.
+**Note:** The HTML report (`display_neg_sample.html`) ([link](https://github.com/unoselab/ISSTA22-CodeStudy/blob/master/DataProc/display_neg_sample.html)) provides a more detailed side-by-side view with syntax highlighting support if opened in a browser.
