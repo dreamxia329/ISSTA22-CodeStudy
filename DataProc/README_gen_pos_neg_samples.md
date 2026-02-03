@@ -87,4 +87,52 @@ The script will print a detailed breakdown of the math for the current dataset:
 
 ```
 
-2. **`display_neg_sample.html`**: A visual HTML report to inspect the code of the generated negative pairs side-by-side.
+2. **`data/display_neg_sample.md`**: A Markdown table for quick inspection on GitHub.
+3. **`display_neg_sample.html`**: A full HTML page with side-by-side code comparison.
+
+---
+
+## 4. Visual Inspection
+
+The script generates a Markdown report (`data/display_neg_sample.md`) to help you verify the quality of the negative samples directly in your browser or editor.
+
+### Example Output (from display_neg_sample.md)
+
+| Pair ID | Function A (Source)  | Function B (Target) |
+| ------- | -------------------- | ------------------- |
+| **#1**  | **ID:** `1423_0`<br> |
+
+<br>`Camel.load()`<br>
+
+<br><pre>public void load() {<br>
+
+<br> super.load();<br>
+
+<br>...</pre> | **ID:** `99_2`<br>
+
+<br>`Kafka.send()`<br>
+
+<br><pre>public void send() {<br>
+
+<br> producer.send(msg);<br>
+
+<br>...</pre> |
+| **#2** | **ID:** `502_4`<br>
+
+<br>`Util.parse()`<br>
+
+<br><pre>public int parse(String s) {<br>
+
+<br> return Integer.parseInt(s);<br>
+
+<br>...</pre> | **ID:** `12_8`<br>
+
+<br>`Auth.login()`<br>
+
+<br><pre>public boolean login() {<br>
+
+<br> if (checkCredentials()) ...<br>
+
+<br>...</pre> |
+
+**Note:** The HTML report (`display_neg_sample.html`) provides a more detailed side-by-side view with syntax highlighting support if opened in a browser.
