@@ -25,7 +25,6 @@ bck/
 *.zip
 *.tar.gz
 
-
 # --- IDE Settings ---
 .vscode/
 .idea/
