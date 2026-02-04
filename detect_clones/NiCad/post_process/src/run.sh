@@ -18,3 +18,14 @@ python 2_java_qmethod_ts.py \
   --out ../data/java/camel_sim0.7.jsonl \
   --projects-root ../.. \
   2>&1 | tee -a "$LOG"
+
+echo "------------------------------------------------------------" | tee -a "$LOG" && \
+echo "[STEP 3] 3_filter_out_data.py  $(date)" | tee -a "$LOG" && \
+echo "------------------------------------------------------------" | tee -a "$LOG" && \
+mkdir -p ../data && \
+python 3_filter_out_data.py \
+  --input ../data/java/camel_sim0.7.jsonl \
+  --output ../data/nicad_camel_clone_func.jsonl \
+  --mode drop_group_if_any_test \
+  --max_clones 20 \
+  2>&1 | tee -a "$LOG"
