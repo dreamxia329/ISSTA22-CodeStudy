@@ -1,4 +1,62 @@
 #!/usr/bin/env python3
+"""
+filter_out_data.py
+
+Purpose
+-------
+Post-process a NiCad-generated clone dataset (JSONL) by:
+  1) Filtering out clone groups that contain test code (configurable mode),
+  2) Discarding clone groups that are too large (nclones >= threshold),
+  3) Optionally stripping Java comments from source code to reduce token size.
+
+This script is intended to produce a cleaner, smaller dataset for downstream
+analysis and/or LLM-based processing.
+
+Input / Output
+--------------
+Input  (default):
+  data/step2_nicad_camel-java_sim0.7_classes_fqn.jsonl
+
+Output (default):
+  data/nicad_camel_clone_func.jsonl
+
+Expected JSONL schema (per line)
+-------------------------------
+Each line is a JSON object representing one clone group, typically containing:
+  - "nclones": int
+  - "sources": list[dict], where each source may include:
+      - "file": str   (path to the source file)
+      - "code": str   (Java source code snippet)
+
+Key Processing Rules
+--------------------
+1) Size filtering:
+   - Drop clone groups where nclones >= --max_clones (default: 20).
+
+2) Test filtering:
+   - Default mode: drop_group_if_any_test
+   - If ANY source path matches common test directory or test filename patterns,
+     the entire clone group is discarded.
+
+3) Comment stripping:
+   - Enabled by default (disable via --keep_comments)
+   - Removes Java line comments (//...) and block comments (/*...*/)
+   - Preserves string literals to avoid corrupting code.
+
+Usage Examples
+--------------
+Run with defaults:
+  python filter_out_data.py
+
+Specify input/output:
+  python filter_out_data.py --input <path/to/input.jsonl> --output <path/to/output.jsonl>
+
+Disable comment stripping:
+  python filter_out_data.py --keep_comments
+
+Change clone group size threshold:
+  python filter_out_data.py --max_clones 15
+"""
 import argparse
 import json
 import os
