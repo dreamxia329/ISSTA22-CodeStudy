@@ -33,3 +33,11 @@ NiCad/txl10.8b.linux64/
 
 # ---- Optional: generated datasets ----
 *.jsonl
+
+# ---- Post-processing workspace / outputs ----
+NiCad/post_process/**/output/
+NiCad/post_process/**/input/
+NiCad/post_process/**/*.log
+NiCad/post_process/**/*.jsonl
+NiCad/post_process/**/__pycache__/
+NiCad/post_process/**/*.pyc
